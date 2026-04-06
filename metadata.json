@@ -1,0 +1,5 @@
+{
+  "name": "Drought-Resilient Crop Watering OpenEnv",
+  "description": "A real-world simulation environment for AI agents to manage precision irrigation in drought-prone regions, following the OpenEnv specification.",
+  "requestFramePermissions": []
+}

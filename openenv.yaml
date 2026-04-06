@@ -1,0 +1,58 @@
+name: indian-agri-irrigation-v1
+description: A high-fidelity simulation of Indian agricultural irrigation management across diverse soil types and food crops.
+version: 1.0.0
+task_type: resource-management
+tags:
+  - agriculture
+  - sustainability
+  - resource-optimization
+  - india
+observation_space:
+  type: object
+  properties:
+    crops:
+      type: array
+      items:
+        type: object
+        properties:
+          id: { type: string }
+          moisture: { type: number, min: 0, max: 100 }
+          health: { type: number, min: 0, max: 100 }
+          type: { type: string }
+    reservoirLevel: { type: number }
+    weatherForecast:
+      type: array
+      items: { type: string, enum: [SUNNY, CLOUDY, RAINY, HEATWAVE] }
+    day: { type: integer }
+    hour: { type: integer }
+action_space:
+  type: discriminatedUnion
+  discriminator: type
+  variants:
+    WATER:
+      properties:
+        cropId: { type: string }
+        amount: { type: number, min: 0 }
+    WAIT:
+      properties:
+        hours: { type: integer, min: 1, max: 24 }
+reward_structure:
+  dense: true
+  components:
+    - crop_health: Positive reward for maintaining health near 100%.
+    - water_efficiency: Negative reward proportional to water used.
+    - survival_bonus: Large penalty if any crop dies (health = 0).
+    - flood_penalty: Large penalty for overwatering (moisture > 95%).
+tasks:
+  - id: ganges-monsoon
+    name: Ganges Plain Monsoon
+    difficulty: EASY
+    soil: ALLUVIAL
+  - id: deccan-summer
+    name: Deccan Plateau Summer
+    difficulty: MEDIUM
+    soil: BLACK
+  - id: thar-drought
+    name: Thar Desert Drought
+    difficulty: HARD
+    soil: ARID
