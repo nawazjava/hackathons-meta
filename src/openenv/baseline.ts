@@ -4,7 +4,8 @@ import { ActionSchema, Observation, SoilType } from './types';
 import { z } from 'zod';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY,
+  baseURL: process.env.GROQ_API_KEY ? "https://api.groq.com/openai/v1" : undefined,
 });
 
 async function runBaseline(task: any) {
@@ -27,7 +28,7 @@ async function runBaseline(task: any) {
   let stepCount = 0;
   let done = false;
 
-  while (!done && stepCount < 100) {
+  while (!done && stepCount < 20) {
     const prompt = `
       You are an expert irrigation AI specializing in Indian agriculture.
       Goal: Keep crops healthy (moisture 40-60%) while saving water.
@@ -48,7 +49,7 @@ async function runBaseline(task: any) {
 
     try {
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: process.env.GROQ_API_KEY ? "llama-3.3-70b-versatile" : "gpt-4o",
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
       });
@@ -74,8 +75,8 @@ async function runBaseline(task: any) {
 }
 
 async function main() {
-  if (!process.env.OPENAI_API_KEY) {
-    console.error("Error: OPENAI_API_KEY environment variable is not set.");
+  if (!process.env.OPENAI_API_KEY && !process.env.GROQ_API_KEY) {
+    console.error("Error: Neither OPENAI_API_KEY nor GROQ_API_KEY environment variable is set.");
     process.exit(1);
   }
 
