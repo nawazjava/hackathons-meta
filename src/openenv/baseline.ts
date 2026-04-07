@@ -1,12 +1,15 @@
 import { OpenAI } from 'openai';
+import { GoogleGenAI } from '@google/genai';
 import { CropWateringEnv } from './environment';
 import { ActionSchema, Observation, SoilType } from './types';
 import { z } from 'zod';
 
 const openai = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY,
+  apiKey: process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY || 'dummy',
   baseURL: process.env.GROQ_API_KEY ? "https://api.groq.com/openai/v1" : undefined,
 });
+
+const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
 async function runBaseline(task: any) {
   console.log(`\n--- Running Baseline for ${task.name} (${task.soil}) ---`);
@@ -48,13 +51,27 @@ async function runBaseline(task: any) {
     `;
 
     try {
-      const completion = await openai.chat.completions.create({
-        model: process.env.GROQ_API_KEY ? "llama-3.3-70b-versatile" : "gpt-4o",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-      });
+      let actionJsonStr = '{}';
 
-      const actionJson = JSON.parse(completion.choices[0].message.content || '{}');
+      if (ai) {
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+          }
+        });
+        actionJsonStr = response.text || '{}';
+      } else {
+        const completion = await openai.chat.completions.create({
+          model: process.env.GROQ_API_KEY ? "llama-3.3-70b-versatile" : "gpt-4o",
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
+        });
+        actionJsonStr = completion.choices[0].message.content || '{}';
+      }
+
+      const actionJson = JSON.parse(actionJsonStr);
       const action = ActionSchema.parse(actionJson);
       
       const result = env.step(action);
@@ -75,8 +92,8 @@ async function runBaseline(task: any) {
 }
 
 async function main() {
-  if (!process.env.OPENAI_API_KEY && !process.env.GROQ_API_KEY) {
-    console.error("Error: Neither OPENAI_API_KEY nor GROQ_API_KEY environment variable is set.");
+  if (!process.env.OPENAI_API_KEY && !process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) {
+    console.error("Error: No API key environment variable is set (OPENAI_API_KEY, GROQ_API_KEY, or GEMINI_API_KEY).");
     process.exit(1);
   }
 
